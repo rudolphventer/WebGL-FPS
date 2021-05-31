@@ -4,7 +4,16 @@ import { OrbitControls } from '/jsm/controls/OrbitControls.js'
 import { PointerLockControls } from '/jsm/controls/PointerLockControls.js'
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader.js';
 
+
+//const socket = io('http://localhost:8080');
+const socket = new WebSocket("ws://localhost:9000");
+//socket.emit('message', "hello world")
+
+
 const objects = [];
+
+let playerposition = null;
+let playerpositionOld = false;
 
 let moveForward = false;
 let moveBackward = false;
@@ -28,20 +37,26 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 //camera.position.set(0,0,20);
 
 //Obj1
+
 const geometry = new THREE.BoxGeometry(3, 5, 5, 100);
 const material = new THREE.MeshStandardMaterial({color: 0xcc33ff });
 const torus = new THREE.Mesh(geometry, material);
+
 //Player
+
 const playerGeo = new THREE.BoxGeometry(2, 7, 2, 100);
 const playerMat = new THREE.MeshStandardMaterial({color: 0x00FFFF });
 const playerObj = new THREE.Mesh(playerGeo, playerMat);
+
 //Floor
+
 var geo = new THREE.PlaneBufferGeometry(2000, 2000, 8, 8);
 var mat = new THREE.MeshStandardMaterial({ color: 0x00FFFF, side: THREE.DoubleSide });
 var plane = new THREE.Mesh(geo, mat);
 plane.rotateX( - Math.PI / 2);
 
 //Add a light
+
 const pointLight = new THREE.PointLight(0xffffff);
 pointLight.position.set(5,25,5);
 const ambientLight = new THREE.AmbientLight(0xffffff,0.5);
@@ -61,7 +76,6 @@ scene.background = spaceTexture;
 const controls = new PointerLockControls(camera, renderer.domElement);
 scene.add( controls.getObject() );
 document.addEventListener( 'click', function () {
-
     controls.lock();
 
 } );
@@ -170,10 +184,13 @@ scene.add(torus);
 scene.add(plane);
 scene.add(playerObj);
 
+//Adding Objects to the collisoin array
 
 objects.push(plane);
 objects.push(torus);
+
 //Game Loop
+
 var jumpTimer = new THREE.Clock(false);
 function detectCollisionCubes(object1, object2){
     object1.geometry.computeBoundingBox(); //not needed if its already calculated
@@ -191,6 +208,9 @@ function detectCollisionCubes(object1, object2){
   }
 
 function animate() {
+
+
+
     playerObj.position.x = controls.getObject().position.x;
     playerObj.position.y = controls.getObject().position.y;
     playerObj.position.z = controls.getObject().position.z;
@@ -199,6 +219,7 @@ function animate() {
     renderer.render(scene, camera);
     
     //Ground Collision
+
     grounded = false
     objects.map( object => {
         if(detectCollisionCubes(playerObj, object))
@@ -206,7 +227,9 @@ function animate() {
             grounded = true;
         }
     })
+
     //Jumping
+
     if(!grounded)
     {
         controls.getObject().position.y += - 0.7;
@@ -225,36 +248,60 @@ function animate() {
     //Movement
 
     if (moveForward && !sprint) {
-        controls.moveForward(0.6)
+        controls.moveForward(0.4)
     }
     if (moveForward && sprint) {
-        controls.moveForward(3)
+        controls.moveForward(1)
     }
     if (moveBackward) {
-        controls.moveForward(-0.6);
+        controls.moveForward(-0.4);
     }
     if (moveLeft) {
-        controls.moveRight(-0.6);
+        controls.moveRight(-0.4);
     }
     if (moveRight) {
-        controls.moveRight(0.6);
+        controls.moveRight(0.4);
     }
 
+    //Transmitting player movements
+    if(playerpositionOld)
+    {
+        if(playerpositionOld != JSON.stringify(playerObj.position))
+        {
+            socket.send(JSON.stringify(playerObj.position))
+            playerpositionOld = JSON.stringify(playerObj.position)
+        }
+    } else
+    {
+        playerpositionOld = JSON.stringify(playerObj.position)
+    }
     
-  //controls.moveForward( - velocity.z * delta );
-  //console.log(moveForward, moveBackward, moveLeft, moveRight)
+
+
+    // playerposition = playerObj.position;  
+    // if(playerpositionOld == null)
+    // {
+    //     playerpositionOld = playerObj.position;  
+    // }
+
+    // if(playerpositionOld != playerposition)
+    // {
+    //     socket.send(JSON.stringify(playerposition))
+    //     playerpositionOld = playerposition;
+    // }
+
 }
 
 
 animate();
 
 //Accounting for window resize
+
 window.addEventListener( 'resize', onWindowResize );
 function onWindowResize() {
 
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize( window.innerWidth, window.innerHeight );
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
-
-			}
+}
