@@ -20,14 +20,22 @@ app.use('/jsm/', express.static(path.join(__dirname, 'node_modules/three/example
 //   });
 // });
 
+
+
 const WebSocket = require('ws')
 const server = new WebSocket.Server({ port: '9000' })
+
+
+
 server.on('connection', socket => { 
   
   socket.on('message', message => {
-    console.log(message)
-    socket.send(`Roger that! ${message}`);
     
+    console.log(JSON.parse(message).name + " " + JSON.parse(message).position.z)
+    //socket.send(`Roger that! ${message}`);
+    server.clients.forEach(function(client) {
+      client.send(message);
+    });
   });
   
 });

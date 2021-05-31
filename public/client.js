@@ -7,12 +7,27 @@ import { GLTFLoader } from '/jsm/loaders/GLTFLoader.js';
 
 //const socket = io('http://localhost:8080');
 const socket = new WebSocket("ws://localhost:9000");
+// socket.onopen = function(event) {
+//     console.log("WebSocket is open now.");
+//   };
 //socket.emit('message', "hello world")
+socket.onmessage = function(event)
+{
+    console.log(event.data)
+    console.log(JSON.parse(event.data).position)
+    if(JSON.parse(event.data).name != playerName)
+    {
+        player2Obj.position.set(JSON.parse(event.data).position.x,JSON.parse(event.data).position.y,JSON.parse(event.data).position.z);
+        console.log(player2Obj.position)
+    }
+}
 
 
 const objects = [];
 
-let playerposition = null;
+let playerName = prompt("Please enter your name", "")
+
+let wspayload = {};
 let playerpositionOld = false;
 
 let moveForward = false;
@@ -47,6 +62,12 @@ const torus = new THREE.Mesh(geometry, material);
 const playerGeo = new THREE.BoxGeometry(2, 7, 2, 100);
 const playerMat = new THREE.MeshStandardMaterial({color: 0x00FFFF });
 const playerObj = new THREE.Mesh(playerGeo, playerMat);
+
+//Player2
+
+const player2Geo = new THREE.BoxGeometry(2, 7, 2, 100);
+const player2Mat = new THREE.MeshStandardMaterial({color: 0x00FFFF });
+const player2Obj = new THREE.Mesh(player2Geo, player2Mat);
 
 //Floor
 
@@ -183,6 +204,7 @@ scene.add(camera);
 scene.add(torus);
 scene.add(plane);
 scene.add(playerObj);
+scene.add(player2Obj);
 
 //Adding Objects to the collisoin array
 
@@ -268,7 +290,10 @@ function animate() {
     {
         if(playerpositionOld != JSON.stringify(playerObj.position))
         {
-            socket.send(JSON.stringify(playerObj.position))
+            wspayload = {};
+            wspayload.position = playerObj.position;
+            wspayload.name = playerName;
+            socket.send(JSON.stringify(wspayload));
             playerpositionOld = JSON.stringify(playerObj.position)
         }
     } else
