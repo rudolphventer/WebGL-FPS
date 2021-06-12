@@ -28,10 +28,9 @@ const server = new WebSocket.Server({ port: '9000' })
 
 
 server.on('connection', socket => { 
-  
   socket.on('message', message => {
     
-    console.log(JSON.parse(message).name + " " + JSON.parse(message).position.z)
+    console.log(JSON.parse(message))
     //socket.send(`Roger that! ${message}`);
     server.clients.forEach(function(client) {
       client.send(message);

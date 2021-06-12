@@ -4,31 +4,11 @@ import { OrbitControls } from '/jsm/controls/OrbitControls.js'
 import { PointerLockControls } from '/jsm/controls/PointerLockControls.js'
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader.js';
 
-
-//const socket = io('http://localhost:8080');
-const socket = new WebSocket("ws://localhost:9000");
-// socket.onopen = function(event) {
-//     console.log("WebSocket is open now.");
-//   };
-//socket.emit('message', "hello world")
-socket.onmessage = function(event)
-{
-    console.log(event.data)
-    console.log(JSON.parse(event.data).position)
-    if(JSON.parse(event.data).name != playerName)
-    {
-        player2Obj.position.set(JSON.parse(event.data).position.x,JSON.parse(event.data).position.y,JSON.parse(event.data).position.z);
-        console.log(player2Obj.position)
-    }
-}
-
-
 const objects = [];
-
-let playerName = prompt("Please enter your name", "")
 
 let wspayload = {};
 let playerpositionOld = false;
+let playerHealth = 100;
 
 let moveForward = false;
 let moveBackward = false;
@@ -38,8 +18,188 @@ let canJump = false;
 let jump = false;
 let sprint = false;
 let grounded = false;
+let leftClick = false;
+let rightClick = false;
+
+// The player class that is created for each player
+
+class playerObject
+{
+    constructor (name)
+    {
+        this.playerName = name;
+        this.geometry = new THREE.BoxGeometry(2, 7, 2, 100);
+        this.material = new THREE.MeshStandardMaterial({color: 0x00FFFF });
+        this.player = new THREE.Mesh(this.geometry, this.material);
+        this.player.name = name;
+        scene.add(this.player);
+        //this.player.position.set(0,10,0);
+    }
+    
+}
+
+//List of players
+let playerList = [];
+
+// Player creation
+let playerName = prompt("Please enter your name", "")
+
+// Loading the map
+const loader = new GLTFLoader();
+
+loader.load( 'arena/scene.gltf', function ( gltf ) {
+
+    gltf.scene.name = "map";
+    var map = gltf.scene;
+	scene.add( map );
+    map.position.set(0,0.1,0)
+    
+    //objects.push(map)
+
+}, undefined, function ( error ) {
+
+	console.error( error );
+
+} );
+
+// Sets up websocket to conenct to server and notify of player connection
+
+const socket = new WebSocket("ws://localhost:9000");
+ socket.onopen = function(event) {
+     console.log("WebSocket is open now.");
+     socket.send(JSON.stringify({action: "connect", playerName: playerName}))
+  };
+
+socket.onmessage = function(event)
+{
+
+    // TODO:: Prevent the server from even repeating the message to the client from which it originated.
+    let messageObj = JSON.parse(event.data);
+    if(messageObj.playerName != playerName)
+    {
+        handleMessage(messageObj);
+    }
+    
+}
+
+//Network Handler
+
+function handleMessage(message)
+{
+    switch (message.action) {
+        case "move":
+          movePlayer(message);
+          break;
+        case "connect":
+          playerConnects(message);
+          break;
+        case "disconnect":
+            playerDisconnects(message);
+        break;
+        case "update":
+            playerUpdates(message);
+        break;
+        case "damagePlayer":
+            assignDamage(message);
+        break;
+      }
+}
+
+//Network logic handlers
+function movePlayer(message)
+{
+    playerList.map(playerItem =>
+        {
+            if(message.playerName == playerItem.playerName)
+            {
+                playerItem.player.position.set(message.position.x,message.position.y,message.position.z);
+            }
+        })
+}
+
+function playerConnects(message)
+{
+    //Adds the new player to the playerList array and responds by sending a ping informing the new player of their location
+    //The other player responds by adding each other player to their playerList based on the pings it recieves
+    playerList.push(new playerObject(message.playerName))
+    console.log(playerList[playerList.length-1].playerName +" has joined!")
+    socket.send(JSON.stringify({action: "update", playerName: playerName, position: playerObj.position}))
+}
+
+function playerUpdates(message)
+{
+    //When our player loads in we reqeust pings from other players already in the game with "playerConnects"
+    //Here we receive them and add each player to the playerList as well as moving them to their current position
+    playerList.push(new playerObject(message.playerName))
+    movePlayer({action: "move", playerName: message.playerName, position: message.position})
+    updatePlayerList();
+}
+
+function updatePlayerList()
+{
+    //Keep a visual lsit of connected players
+    //Will only add new players, will not delete old players
+    playerList.map(item => {
+        var node = document.createElement('li');
+        node.appendChild(document.createTextNode(item.playerName));
+        document.getElementById("players").appendChild(node)
+    })
+}
+
+function damagePlayer(name, weapon, damage)
+{
+    //Called when damage occurs on our client and informs the other clients of this damage
+    socket.send(JSON.stringify({
+        action: "damagePlayer", 
+        attackerName: playerName, 
+        victimName: name,
+        weapon: weapon, 
+        damageAmount: damage
+    }))
+}
+
+function assignDamage(message)
+{
+    //When we recieve a damage message, we check if the damage is being assigned to our player, if so
+    //decrement our health or kill ourselves if it is too low
+    console.log(message)
+    if(playerName == message.victimName)
+    {
+        playerHealth -= message.damageAmount;
+        console.log( message.attackerName + "attacked you with " + message.weapon + " for " + message.damageAmount + " damage");
+        console.log("Your health is now " + playerHealth);
+        if(playerHealth <= 0)
+        {
+            console.log("You died")
+            die(message);
+        }
+    }
+}
+
+function die(finalDamageDetails)
+{
+    //Accepts the details of the killing blow and credits the kill then "kills" the player locally
+    if(finalDamageDetails.victimName = playerName)
+    {
+        var details = finalDamageDetails;
+        details.action = "kill";
+        socket.send(JSON.stringify({ details}));
+    } else
+    {
+        //TODO
+    }
+    
+}
+
+function playerDisconnencts(name)
+{
+}
+
+// Set up overlays
+//death overlay
 
 //Setup scene
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth/window.innerHeight,0.1, 1000);
 const renderer = new THREE.WebGLRenderer({
@@ -49,25 +209,23 @@ const renderer = new THREE.WebGLRenderer({
 
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
-//camera.position.set(0,0,20);
 
 //Obj1
 
 const geometry = new THREE.BoxGeometry(3, 5, 5, 100);
 const material = new THREE.MeshStandardMaterial({color: 0xcc33ff });
 const torus = new THREE.Mesh(geometry, material);
+torus.name = "torus"
 
-//Player
+
+//Creating player object
 
 const playerGeo = new THREE.BoxGeometry(2, 7, 2, 100);
 const playerMat = new THREE.MeshStandardMaterial({color: 0x00FFFF });
 const playerObj = new THREE.Mesh(playerGeo, playerMat);
 
-//Player2
 
-const player2Geo = new THREE.BoxGeometry(2, 7, 2, 100);
-const player2Mat = new THREE.MeshStandardMaterial({color: 0x00FFFF });
-const player2Obj = new THREE.Mesh(player2Geo, player2Mat);
+
 
 //Floor
 
@@ -144,6 +302,43 @@ const onKeyDown = function ( event ) {
         case 'ShiftLeft':
             sprint = true;
             break;
+            
+
+    }
+
+};
+
+const mouseDown = function ( event ) {
+    switch ( event.button ) {
+
+        case 0:
+           leftClick = true;
+            break;
+        case 1:
+            console.log("middle")
+            break;
+        case 2:
+            rightClick = true;
+            break;
+            
+
+    }
+
+};
+
+const mouseUp = function ( event ) {
+    switch ( event.button ) {
+
+        case 0:
+            leftClick = false;
+            break;
+        case 1:
+            console.log("middle")
+            break;
+        case 2:
+            rightClick = false;
+            break;
+            
 
     }
 
@@ -191,6 +386,8 @@ const onKeyUp = function ( event ) {
 
 document.addEventListener( 'keydown', onKeyDown );
 document.addEventListener( 'keyup', onKeyUp );
+document.addEventListener( 'mousedown', mouseDown );
+document.addEventListener( 'mouseup', mouseUp );
 
 // Object Controls
 
@@ -204,12 +401,42 @@ scene.add(camera);
 scene.add(torus);
 scene.add(plane);
 scene.add(playerObj);
-scene.add(player2Obj);
+//scene.add(player2Obj);
 
 //Adding Objects to the collisoin array
 
 objects.push(plane);
 objects.push(torus);
+
+//Hit detection
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+
+var attackTimer = new THREE.Clock(false);
+function shoot()
+{
+    if(attackTimer.getElapsedTime() >=0.2)
+    {
+        attackTimer.stop();
+    }
+    if(!attackTimer.running)
+    {	
+        raycaster.setFromCamera( mouse, camera );	
+        var intersects = raycaster.intersectObjects( scene.children );
+
+        if(playerList.some(player => player.playerName === intersects[0].object.name)){
+            damagePlayer(intersects[0].object.name, "defaultWeapon", 10)
+            console.log(playerName + " hit " +intersects[0].object.name)
+
+        } else{
+            //
+        }
+        console.log(intersects[0].object.name)
+        attackTimer.stop();
+        attackTimer.start();
+    }
+    
+}
 
 //Game Loop
 
@@ -230,9 +457,6 @@ function detectCollisionCubes(object1, object2){
   }
 
 function animate() {
-
-
-
     playerObj.position.x = controls.getObject().position.x;
     playerObj.position.y = controls.getObject().position.y;
     playerObj.position.z = controls.getObject().position.z;
@@ -270,19 +494,25 @@ function animate() {
     //Movement
 
     if (moveForward && !sprint) {
-        controls.moveForward(0.4)
+        controls.moveForward(0.2)
     }
     if (moveForward && sprint) {
-        controls.moveForward(1)
+        controls.moveForward(0.4)
     }
     if (moveBackward) {
-        controls.moveForward(-0.4);
+        controls.moveForward(-0.2);
     }
     if (moveLeft) {
-        controls.moveRight(-0.4);
+        controls.moveRight(-0.2);
     }
     if (moveRight) {
-        controls.moveRight(0.4);
+        controls.moveRight(0.2);
+    }
+    if (leftClick) {
+        shoot();
+    }
+    if (rightClick) {
+        //
     }
 
     //Transmitting player movements
@@ -292,7 +522,8 @@ function animate() {
         {
             wspayload = {};
             wspayload.position = playerObj.position;
-            wspayload.name = playerName;
+            wspayload.playerName = playerName;
+            wspayload.action = "move";
             socket.send(JSON.stringify(wspayload));
             playerpositionOld = JSON.stringify(playerObj.position)
         }
@@ -330,3 +561,4 @@ function onWindowResize() {
     renderer.setSize( window.innerWidth, window.innerHeight );
 
 }
+
