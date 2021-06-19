@@ -67,6 +67,6 @@ server.on('connection', socket => {
 });
 
 
-app.listen(8080, () =>
+app.listen(process.env.PORT || 8080, () =>
   console.log('Visit http://127.0.0.1:8080')
 );
