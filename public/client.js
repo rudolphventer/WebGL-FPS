@@ -139,7 +139,7 @@ gltfloader.load( 'gun/gun.gltf', function ( gltf ) {
 
 // Sets up websocket to conenct to server and notify of player connection
 
-const socket = new WebSocket("ws://localhost:9000");
+const socket = new WebSocket("ws://fpsgame2021.herokuapp.com:9000");
  socket.onopen = function(event) {
      console.log("WebSocket is open now.");
      socket.send(JSON.stringify({action: "connect", playerName: playerName}))
