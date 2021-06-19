@@ -25,16 +25,43 @@ app.use('/jsm/', express.static(path.join(__dirname, 'node_modules/three/example
 const WebSocket = require('ws')
 const server = new WebSocket.Server({ port: '9000' })
 
+//Game logic
+const leaderBoard = {};
 
+function handleMessage(message)
+{
+  var messageJSON = JSON.parse(message);
+    switch (messageJSON.action) {
+        case "killPlayer":
+          leaderBoard[messageJSON.attackerName].points += 1;
+          leaderBoard[messageJSON.victimName].deaths += 1;
+          var leaderBoardPacket = {leaderBoard}
+          leaderBoardPacket.action = "leaderBoardUpdate";
+          broadcast(JSON.stringify(leaderBoardPacket));
+          broadcast(message);
+          break;
+        case "connect":
+          broadcast(message);
+          leaderBoard[messageJSON.playerName] = {name: messageJSON.playerName, points: 0, deaths: 0};
+          break;
+        default:
+          broadcast(message);
+      }
+}
+
+function broadcast(message)
+{
+  server.clients.forEach(function(client) {
+    client.send(message);
+  });
+}
 
 server.on('connection', socket => { 
   socket.on('message', message => {
     
     console.log(JSON.parse(message))
     //socket.send(`Roger that! ${message}`);
-    server.clients.forEach(function(client) {
-      client.send(message);
-    });
+    handleMessage(message);
   });
   
 });

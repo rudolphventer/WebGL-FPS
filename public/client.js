@@ -5,6 +5,7 @@ import { PointerLockControls } from '/jsm/controls/PointerLockControls.js'
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader.js';
 
 const objects = [];
+const spawnPoints = [[0,3,0],[15,3,9],[-6,3,-25],[-27,3,-5]]
 
 let wspayload = {};
 let playerpositionOld = false;
@@ -22,6 +23,17 @@ let sprint = false;
 let grounded = false;
 let leftClick = false;
 let rightClick = false;
+let dead = false;
+let spawned = false;
+var leaderBoard = [];
+let showLeaderBoard = false;
+
+let gunAccuracy = 0.03;
+let gunMagazineSize = 30;
+let gunAmmo = 30;
+let gunDamage = 25;
+let gunFireRate = 0.1;
+let reload = false;
 
 let blockedForward = false;
 let blockedBackward = false;
@@ -36,14 +48,48 @@ class playerObject
     constructor (name)
     {
         this.playerName = name;
-        this.geometry = new THREE.BoxGeometry(2, 3, 2, 100);
+        this.geometry = new THREE.BoxGeometry(1, 3, 1, 100);
         this.material = new THREE.MeshStandardMaterial({color: 0x00FFFF });
         this.player = new THREE.Mesh(this.geometry, this.material);
         this.player.geometry.applyMatrix( new THREE.Matrix4().makeTranslation(0, -1, 0) );
         this.player.name = name;
-        scene.add(this.player);
-        //this.player.position.set(0,10,0);
     }
+
+    spawn(x, y, z)
+    {
+        scene.add(this.player);
+        this.player.position.set(0,10,0)
+    }
+    kill()
+    {
+        scene.remove(this.player);
+    }
+    
+}
+
+function getPlayerIndexByName(name)
+{
+    let selectedIndex;
+    playerList.map((playerItem, index) =>
+        {
+            if(playerItem.playerName == name)
+            {
+                selectedIndex = index;
+            }
+        })
+    return selectedIndex
+}
+
+document.getElementById ("respawn").addEventListener ("click", e => spawn(), false);
+
+function spawn()
+{
+    var spawnPoint = spawnPoints[Math.floor(Math.random()*spawnPoints.length)];
+    controls.getObject().position.set(spawnPoint[0],spawnPoint[1],spawnPoint[2],);
+    socket.send(JSON.stringify({action: "spawnPlayer", playerName: playerName, position: playerObj.position}))
+    dead = false;
+    spawned = true;
+    playerHealth = 100;
     
 }
 
@@ -57,16 +103,14 @@ let playerName = prompt("Please enter your name", "")
 const gltfloader = new GLTFLoader();
 
 let map;
-let gun;
+var gun;
 
 gltfloader.load( 'arena/scene.gltf', function ( gltf ) {
-    console.log(gltf.scene)
     map = gltf.scene;
     map.name = "teeeeeeee"
     map.position.set(0,0.1,0)
     objects.push(map)
     scene.add( map );
-    console.log(map)
     //objects.push(map)
 
 }, undefined, function ( error ) {
@@ -75,13 +119,13 @@ gltfloader.load( 'arena/scene.gltf', function ( gltf ) {
 
 } );
 
-gltfloader.load( 'gun/scene.gltf', function ( gltf ) {
+gltfloader.load( 'gun/gun.gltf', function ( gltf ) {
     gun = gltf.scene;
     gun.name = "teeeeeeee"
-    gun.position.set(1,-1,0)
-    gun.scale.set(0.5,0.5,0.5)
+    gun.position.set(0.3,-0.3,-1)
+    gun.scale.set(0.2,0.2,0.2)
     //gun.position.set(3,-1,1).applyQuaternion( camera.quaternion )
-    gun.rotation.set(0,1.5708,0)
+    //gun.rotation.set(0,1.5708,0)
     camera.add( gun );
     //objects.push(map)
 
@@ -99,6 +143,7 @@ const socket = new WebSocket("ws://localhost:9000");
  socket.onopen = function(event) {
      console.log("WebSocket is open now.");
      socket.send(JSON.stringify({action: "connect", playerName: playerName}))
+     spawned = true;
   };
 
 socket.onmessage = function(event)
@@ -133,6 +178,16 @@ function handleMessage(message)
         case "damagePlayer":
             assignDamage(message);
         break;
+        case "killPlayer":
+            killPlayer(message);
+        break;
+        case "spawnPlayer":
+            spawnPlayer(message);
+        break;
+        case "leaderBoardUpdate":
+            updateLeaderBoard(message);
+        break;
+
       }
 }
 
@@ -153,7 +208,9 @@ function playerConnects(message)
 {
     //Adds the new player to the playerList array and responds by sending a ping informing the new player of their location
     //The other player responds by adding each other player to their playerList based on the pings it recieves
-    playerList.push(new playerObject(message.playerName))
+    let newPlayer = new playerObject(message.playerName);
+    playerList.push(newPlayer);
+    newPlayer.spawn();
     console.log(playerList[playerList.length-1].playerName +" has joined!")
     socket.send(JSON.stringify({action: "update", playerName: playerName, position: playerObj.position}))
 }
@@ -162,7 +219,9 @@ function playerUpdates(message)
 {
     //When our player loads in we reqeust pings from other players already in the game with "playerConnects"
     //Here we receive them and add each player to the playerList as well as moving them to their current position
-    playerList.push(new playerObject(message.playerName))
+    let newPlayer = new playerObject(message.playerName);
+    newPlayer.spawn();
+    playerList.push(newPlayer);
     movePlayer({action: "move", playerName: message.playerName, position: message.position})
     updatePlayerList();
 }
@@ -202,6 +261,7 @@ function assignDamage(message)
         console.log("Your health is now " + playerHealth);
         if(playerHealth <= 0)
         {
+            dead = true;
             console.log("You died")
             die(message);
         }
@@ -214,13 +274,49 @@ function die(finalDamageDetails)
     if(finalDamageDetails.victimName = playerName)
     {
         var details = finalDamageDetails;
-        details.action = "kill";
-        socket.send(JSON.stringify({ details}));
+        details.action = "killPlayer";
+        socket.send(JSON.stringify(details));
     } else
     {
         //TODO
     }
     
+}
+
+function killPlayer(message)
+{
+    console.log(message)
+    playerList.map( entity =>
+        {
+            console.log(entity)
+            if(entity.playerName == message.victimName)
+            {
+                console.log("killplayer "+ entity.playerName)
+                entity.kill();
+            }
+        })
+    
+}
+
+function spawnPlayer(message)
+{
+    console.log(message)
+    let spawningPlayer = playerList[getPlayerIndexByName(message.playerName)];
+    spawningPlayer.spawn(10,10,10);
+}
+
+function updateLeaderBoard(message)
+{
+    console.log(message.leaderBoard)
+    leaderBoard = Object.values(message.leaderBoard);
+    console.log(leaderBoard)
+
+    document.getElementById("leaderBoard").innerHTML = "";
+    leaderBoard.forEach(function (item) {
+        let li = document.createElement('li');
+        document.getElementById("leaderBoard").appendChild(li);
+        li.innerHTML += item.name + " Kills: "+item.points+" Deaths: "+item.deaths;
+    });
 }
 
 function playerDisconnencts(name)
@@ -243,6 +339,7 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 
 //Sounds
+
 // create an AudioListener and add it to the camera
 const listener = new THREE.AudioListener();
 camera.add( listener );
@@ -299,14 +396,7 @@ torus.rotateX(0.5)
 const playerGeo = new THREE.BoxGeometry(2, 7, 2, 100);
 const playerMat = new THREE.MeshStandardMaterial({color: 0x00FFFF });
 const playerObj = new THREE.Mesh(playerGeo, playerMat);
-playerObj.position.set(0,10,0)
-
-// const playerGunG = new THREE.BoxGeometry(0.05, 0.05, 1, 100);
-// const playerGunM = new THREE.MeshStandardMaterial({color: 0x00FFFF });
-// const playerGun = new THREE.Mesh(playerGeo, playerMat);
-//gun.position.set(3,-1,1).applyQuaternion( camera.quaternion )
-//gun.rotation.set(1.5708,0,0)
-//camera.add(playerGun)
+playerObj.position.set(0,10,0);
 
 //Floor
 
@@ -379,6 +469,12 @@ const onKeyDown = function ( event ) {
         case 'ShiftLeft':
             sprint = true;
             break;
+        case 'KeyR':
+            reload = true;
+            break;
+        case 'KeyL':
+            showLeaderBoard = true;
+            break;
             
 
     }
@@ -423,7 +519,7 @@ const mouseUp = function ( event ) {
 
 function jumpAction()
 {
-    if(!jumpTimer.running)
+    if(!jumpTimer.running && grounded)
     {
         console.log("no")
         jumpTimer.stop();
@@ -457,6 +553,12 @@ const onKeyUp = function ( event ) {
         case 'KeyD':
             moveRight = false;
             break;
+        case 'KeyR':
+            reload = false;
+            break;
+        case 'KeyL':
+            showLeaderBoard = false;
+            break;
     }
 
 };
@@ -484,72 +586,95 @@ scene.add(playerObj);
 objects.push(plane);
 objects.push(torus);
 
-//Hit detection
-var mouse = new THREE.Vector2();
+//SHooting in general////////////////////////////////////////////////////////////////////////
+const flashPNG = new THREE.TextureLoader().load( 'gun/flash.png' );
+const flashMaterial = new THREE.SpriteMaterial( { map: flashPNG } );
+
+const holePNG = new THREE.TextureLoader().load( 'gun/bulletHole.png' );
+const holeMaterial = new THREE.SpriteMaterial( { map: holePNG} );
+
+const muzzleFlash = new THREE.Sprite( flashMaterial );
+const lineMaterial = new THREE.LineBasicMaterial( { color: 0xffffff } );
+const lineGeometry = new THREE.BufferGeometry()
+//const LineGeometry = new THREE.BufferGeometry().setFromPoints([intersects[0].point, gun.getWorldPosition() ]);
+const line = new THREE.Line( lineGeometry, lineMaterial );
+
+function hitMarker(x)
+{
+    if(x)
+    {
+        document.getElementById("crosshair").innerHTML = "(+)";
+    } else{
+        document.getElementById("crosshair").innerHTML = "+";
+    }
+}
+
+//var mouse = new THREE.Vector2();
 var raycaster = new THREE.Raycaster( new THREE.Vector3(), new THREE.Vector3( 0, - 5, 0 ), 0, 0 );
 var attackTimer = new THREE.Clock(false);
 function shoot()
 {
 
-   
     if(!attackTimer.running)
     {	
-        console.log("start")
-        gun.position.z += -0.5
-        sound.play();
-        raycaster.setFromCamera( mouse, camera );	
-        var intersects = raycaster.intersectObjects( scene.children, true );
-        if(intersects.length >0)
+        if(gunAmmo > 0)
         {
-            if(playerList.some(player => player.playerName === intersects[0].object.name)){
-                damagePlayer(intersects[0].object.name, "defaultWeapon", 10)
-                console.log(playerName + " hit " +intersects[0].object.name)
+            gunAmmo--;
+            document.getElementById("ammoCounter").innerHTML = gunAmmo;
+            var testt = new THREE.Vector2();
+            testt.y = (Math.random()*1>0.5?Math.random()*gunAccuracy*-1:Math.random()*gunAccuracy*1);
+            testt.x = (Math.random()*1>0.5?Math.random()*gunAccuracy*-1:Math.random()*gunAccuracy*1);
+            gun.add(muzzleFlash);
+            muzzleFlash.position.z = -5;
+            muzzleFlash.scale.set(3,3,3);
+            //gun.position.z += -0.5
+            sound.play();
+            raycaster.setFromCamera( testt, camera );	
+            var intersects = raycaster.intersectObjects( scene.children, true );
+            // how to get point where bulelt hits //console.log(intersects[0].point)
+            var gunPosition = new THREE.Vector3();
+            gun.getWorldPosition(gunPosition)
+            let bulletArc = new THREE.BufferGeometry().setFromPoints([intersects[0].point, gunPosition ]);
+            line.geometry = bulletArc;
+            scene.add(line);
 
-            } else{
-                //
+            if(intersects.length >0)
+            {
+                if(playerList.some(player => player.playerName === intersects[0].object.name)){
+                    hitMarker(true);
+                    damagePlayer(intersects[0].object.name, "defaultWeapon", gunDamage)
+                    console.log(playerName + " hit " +intersects[0].object.name)
+                    
+
+                }
+                
             }
-            console.log(intersects[0].object.name)
-            
-        }
-        attackTimer.stop();
+            attackTimer.stop();
             attackTimer.start();
+        }
+        else
+        {
+
+        }
+        
     }
     else  
-    if(attackTimer.getElapsedTime() >=0.2)
+    if(attackTimer.getElapsedTime() >=gunFireRate)
     {
-        console.log("stop")
         attackTimer.stop();
         sound.stop();
-        gun.position.z += 0.5
+        //gun.position.z += 0.5
+        gun.remove(muzzleFlash);
+        scene.remove(line);
+    }
+    else
+    {
+        gun.remove(muzzleFlash);
+        scene.remove(line);
+        hitMarker(false);
     }
     
 }
-
-
-//Raycast collision detection test
-
-
-// collision detection:
-//   determines if any of the rays from the cube's origin to each vertex
-//      intersects any face of a mesh in the array of target meshes
-//   for increased collision accuracy, add more vertices to the cube;
-//      for example, new THREE.CubeGeometry( 64, 64, 64, 8, 8, 8, wireMaterial )
-//   HOWEVER: when the origin of the ray is within the target mesh, collisions do not occur
-// var originPoint = playerObj.position.clone();
-
-// for (var vertexIndex = 0; vertexIndex < playerObj.geometry.vertices.length; vertexIndex++)
-// {       
-//     var localVertex = playerObj.geometry.vertices[vertexIndex].clone();
-//     var globalVertex = localVertex.applyMatrix4( playerObj.matrix );
-//     var directionVector = globalVertex.sub( playerObj.position );
-
-//     var ray = new THREE.Raycaster( originPoint, directionVector.clone().normalize() );
-//     var collisionResults = ray.intersectObjects( objects );
-//     if ( collisionResults.length > 0 && collisionResults[0].distance < directionVector.length() ) 
-//         console.log("hit")
-// }
-
-//Game Loop
 
 
 const down = new THREE.Vector3(0, -1, 0);
@@ -568,7 +693,6 @@ function detectFloorCollisions(object1, object2)
         }
         else if(collisionResults[0].distance < 2.5)
         {
-            console.log("infloor")
             controls.getObject().position.y += 0.1;
             inFloor = true;
             return true;
@@ -753,31 +877,25 @@ function animate() {
         if(detectFrontCollisions(playerObj, object))
         {
             blockedForward = true;
-            console.log("forward")
         }
         if(detectBackCollisions(playerObj, object))
         {
             blockedBackward = true;
-            console.log("backward")
         }
         if(detectLeftCollisions(playerObj, object))
         {
             blockedLeft= true;
-            console.log("left")
         }
         if(detectRightCollisions(playerObj, object))
         {
             blockedRight = true;
-            console.log("right")
         }
         if(detectTopCollisions(playerObj, object))
         {
             blockedTop = true;
-            console.log("right")
         }
         if(blockedRight && blockedLeft && blockedLeft && blockedBackward)
         {
-            console.log("stuck")
             controls.moveForward(-1)
         }
     })
@@ -803,28 +921,34 @@ function animate() {
     }
 
     //Movement
-
-    if (moveForward && !sprint && !blockedForward) {
-        controls.moveForward(0.2)
+    if(!dead && spawned)
+    {
+        if (moveForward && !sprint && !blockedForward) {
+            controls.moveForward(0.2)
+        }
+        if (moveForward && sprint) {
+            controls.moveForward(0.4)
+        }
+        if (moveBackward && !blockedBackward) {
+            controls.moveForward(-0.2);
+        }
+        if (moveLeft && !blockedRight) {
+            controls.moveRight(-0.2);
+        }
+        if (moveRight && !blockedLeft) {
+            controls.moveRight(0.2);
+        }
+        if (leftClick) {
+            shoot();
+        }
+        if (reload) {
+            gunAmmo = gunMagazineSize;
+        }
+        if (rightClick) {
+            //
+        }
     }
-    if (moveForward && sprint) {
-        controls.moveForward(0.4)
-    }
-    if (moveBackward && !blockedBackward) {
-        controls.moveForward(-0.2);
-    }
-    if (moveLeft && !blockedRight) {
-        controls.moveRight(-0.2);
-    }
-    if (moveRight && !blockedLeft) {
-        controls.moveRight(0.2);
-    }
-    if (leftClick) {
-        shoot();
-    }
-    if (rightClick) {
-        //
-    }
+    
 
     //Transmitting player movements
     if(playerpositionOld || playerrotationOld)
@@ -845,21 +969,40 @@ function animate() {
         playerpositionOld = JSON.stringify(playerObj.position)
         playerrotationOld = JSON.stringify(playerObj.rotation)
     }
-    
 
+    //Checking if player is dead and spawned
+    if(dead)
+    {
+        document.getElementById("deathScreen").style.visibility = "visible";
+        controls.unlock();
+    }else
+    {
+        document.getElementById("deathScreen").style.visibility = "hidden";
+    }
 
-    // playerposition = playerObj.position;  
-    // if(playerpositionOld == null)
-    // {
-    //     playerpositionOld = playerObj.position;  
-    // }
+    //Damage Overlay
+    if(playerHealth<100 && !dead)
+    {
+        let redLevel 
+        document.getElementById("damageOverlay").style.backgroundColor= "rgba(95, 0, 0, "+((playerHealth>30)?(1-(playerHealth/100)):0.7)+")"
+        playerHealth += 0.1;
+    }
+    else if(dead)
+    {
+        document.getElementById("damageOverlay").style.backgroundColor= "rgba(95, 0, 0, 0)"
+        
+    }
 
-    // if(playerpositionOld != playerposition)
-    // {
-    //     socket.send(JSON.stringify(playerposition))
-    //     playerpositionOld = playerposition;
-    // }
-
+    //Score overlay
+    if(showLeaderBoard)
+    {
+        document.getElementById("scoreBoard").style.visibility = "visible";
+    }
+    else
+    {
+        document.getElementById("scoreBoard").style.visibility = "hidden"; 
+        
+    }
 }
 
 
