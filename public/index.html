@@ -14,19 +14,12 @@
     <div class="overlay">
       <div id="crosshair" class="crosshair">+</div>
       <div id="ammoCounter"></div>
-      <div class="playerlist">
-        Connected Players:
-        <ul id="players">
-        </ul>
-      </div>
     </div>
     <div id="damageOverlay" class="damageOverlay">
     </div>
     <div id="scoreBoard" class="scoreOverlay">
       <div style="display: relative; text-align: center;">
-        <ol id="leaderBoard">
-
-        </ol>
+        <ol id="leaderBoard"></ol>
       </div>
     </div>
     <div id="deathScreen" class="deathOverlay">
@@ -34,6 +27,12 @@
         <h1 class="centered">You Died</h1>
         <div class="centered" id="killerName"></div>
         <button class="centered" id="respawn">Respawn</button>
+      </div>
+    </div>
+    <div id="mainMenu" class="menuOverlay">
+      <div style="display: relative; text-align: center;">
+        <button class="centered" id="respawn">Respawn</button>
+        <button class="centered" id="exit">Exit</button>
       </div>
     </div>
     <div id="app"></div>

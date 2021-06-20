@@ -49,7 +49,7 @@ class playerObject
     {
         this.playerName = name;
         this.geometry = new THREE.BoxGeometry(1, 3, 1, 100);
-        this.material = new THREE.MeshStandardMaterial({color: 0x00FFFF });
+        this.material = new THREE.MeshStandardMaterial({color: 0x898989 });
         this.player = new THREE.Mesh(this.geometry, this.material);
         this.player.geometry.applyMatrix( new THREE.Matrix4().makeTranslation(0, -1, 0) );
         this.player.name = name;
@@ -138,7 +138,7 @@ gltfloader.load( 'gun/gun.gltf', function ( gltf ) {
 
 
 // Sets up websocket to conenct to server and notify of player connection
-console.log(window.location.host)
+
 const socket = new WebSocket("wss://" + window.location.host );
  socket.onopen = function(event) {
      console.log("WebSocket is open now.");
@@ -223,18 +223,6 @@ function playerUpdates(message)
     newPlayer.spawn();
     playerList.push(newPlayer);
     movePlayer({action: "move", playerName: message.playerName, position: message.position})
-    updatePlayerList();
-}
-
-function updatePlayerList()
-{
-    //Keep a visual lsit of connected players
-    //Will only add new players, will not delete old players
-    playerList.map(item => {
-        var node = document.createElement('li');
-        node.appendChild(document.createTextNode(item.playerName));
-        document.getElementById("players").appendChild(node)
-    })
 }
 
 function damagePlayer(name, weapon, damage)
@@ -428,13 +416,14 @@ document.addEventListener( 'click', function () {
 controls.addEventListener( 'lock', function () {
 
 	//menu.style.display = 'none';
+    //document.getElementById('mainMenu').style.visibility = "hidden";
     controls.lock();
 
 } );
 
 controls.addEventListener( 'unlock', function () {
 
-	//menu.style.display = 'block';
+	//document.getElementById('mainMenu').style.visibility = "visible";
     controls.unlock();
 
 } );
@@ -587,6 +576,7 @@ objects.push(plane);
 objects.push(torus);
 
 //SHooting in general////////////////////////////////////////////////////////////////////////
+document.getElementById("ammoCounter").innerHTML = gunAmmo;
 const flashPNG = new THREE.TextureLoader().load( 'gun/flash.png' );
 const flashMaterial = new THREE.SpriteMaterial( { map: flashPNG } );
 
@@ -933,6 +923,7 @@ function animate() {
         }
         if (reload) {
             gunAmmo = gunMagazineSize;
+            document.getElementById("ammoCounter").innerHTML = gunAmmo;
         }
         if (rightClick) {
             //
@@ -997,6 +988,7 @@ function animate() {
     {
         gun.remove(muzzleFlash);
         scene.remove(line);
+        hitMarker(false)
     }
     
 }

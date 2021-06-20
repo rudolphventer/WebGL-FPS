@@ -18,9 +18,11 @@ const wss = new WebSocket.Server({ server })
 
 //Game logic
 const leaderBoard = {};
+var clients = [];
 
 function handleMessage(message)
 {
+  broadcast(message);
   var messageJSON = JSON.parse(message);
     switch (messageJSON.action) {
         case "killPlayer":
@@ -29,14 +31,13 @@ function handleMessage(message)
           var leaderBoardPacket = {leaderBoard}
           leaderBoardPacket.action = "leaderBoardUpdate";
           broadcast(JSON.stringify(leaderBoardPacket));
-          broadcast(message);
           break;
         case "connect":
-          broadcast(message);
           leaderBoard[messageJSON.playerName] = {name: messageJSON.playerName, points: 0, deaths: 0};
+          clients.push()
           break;
         default:
-          broadcast(message);
+          
       }
 }
 
@@ -49,9 +50,6 @@ function broadcast(message)
 
 wss.on('connection', socket => { 
   socket.on('message', message => {
-    
-    //console.log(JSON.parse(message))
-    //socket.send(`Roger that! ${message}`);
     handleMessage(message);
   });
   
