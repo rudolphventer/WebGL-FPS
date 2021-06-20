@@ -139,7 +139,7 @@ gltfloader.load( 'gun/gun.gltf', function ( gltf ) {
 
 // Sets up websocket to conenct to server and notify of player connection
 console.log(window.location.host)
-const socket = new WebSocket("ws://" + window.location.host );
+const socket = new WebSocket("wss://" + window.location.host );
  socket.onopen = function(event) {
      console.log("WebSocket is open now.");
      socket.send(JSON.stringify({action: "connect", playerName: playerName}))
