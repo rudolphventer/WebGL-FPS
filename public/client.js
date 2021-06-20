@@ -28,7 +28,7 @@ let spawned = false;
 var leaderBoard = [];
 let showLeaderBoard = false;
 
-let gunAccuracy = 0.03;
+let gunAccuracy = 0.02;
 let gunMagazineSize = 30;
 let gunAmmo = 30;
 let gunDamage = 25;
@@ -139,7 +139,7 @@ gltfloader.load( 'gun/gun.gltf', function ( gltf ) {
 
 // Sets up websocket to conenct to server and notify of player connection
 
-const socket = new WebSocket("wss://" + window.location.host );
+const socket = new WebSocket("ws://" + window.location.host );
  socket.onopen = function(event) {
      console.log("WebSocket is open now.");
      socket.send(JSON.stringify({action: "connect", playerName: playerName}))
@@ -609,6 +609,7 @@ function shoot()
     {	
         if(gunAmmo > 0)
         {
+            gun.position.z = -0.5;
             gunAmmo--;
             document.getElementById("ammoCounter").innerHTML = gunAmmo;
             var testt = new THREE.Vector2();
@@ -643,16 +644,10 @@ function shoot()
             attackTimer.start();
         }
         
+        
     }
-    else  
-    if(attackTimer.getElapsedTime() > gunFireRate)
-    {
-        attackTimer.stop();
-        sound.stop();
-        //gun.position.z += 0.5
-        //gun.remove(muzzleFlash);
-        //scene.remove(line);
-    }
+
+
     
 }
 
@@ -984,11 +979,23 @@ function animate() {
         document.getElementById("scoreBoard").style.visibility = "hidden"; 
         
     }
-    if(attackTimer.getElapsedTime() > 0.02)
+    if(attackTimer.getElapsedTime() > 0.01)
     {
         gun.remove(muzzleFlash);
         scene.remove(line);
         hitMarker(false)
+    }
+    if(attackTimer.getElapsedTime() > gunFireRate)
+    {
+        attackTimer.stop();
+        //if(leftClick)
+        sound.stop();
+        
+        //gun.remove(muzzleFlash);
+        //scene.remove(line);
+    } else if(attackTimer.getElapsedTime() < gunFireRate)
+    {
+        gun.position.z = -0.5-(0.5* (attackTimer.getElapsedTime()/gunFireRate))
     }
     
 }
