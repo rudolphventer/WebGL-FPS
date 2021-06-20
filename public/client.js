@@ -138,8 +138,8 @@ gltfloader.load( 'gun/gun.gltf', function ( gltf ) {
 
 
 // Sets up websocket to conenct to server and notify of player connection
-
-const socket = new WebSocket("ws://localhost:9000");
+console.log(window.location.host)
+const socket = new WebSocket("ws://" + window.location.host );
  socket.onopen = function(event) {
      console.log("WebSocket is open now.");
      socket.send(JSON.stringify({action: "connect", playerName: playerName}))
@@ -652,26 +652,16 @@ function shoot()
             attackTimer.stop();
             attackTimer.start();
         }
-        else
-        {
-
-        }
         
     }
     else  
-    if(attackTimer.getElapsedTime() >=gunFireRate)
+    if(attackTimer.getElapsedTime() > gunFireRate)
     {
         attackTimer.stop();
         sound.stop();
         //gun.position.z += 0.5
-        gun.remove(muzzleFlash);
-        scene.remove(line);
-    }
-    else
-    {
-        gun.remove(muzzleFlash);
-        scene.remove(line);
-        hitMarker(false);
+        //gun.remove(muzzleFlash);
+        //scene.remove(line);
     }
     
 }
@@ -1003,6 +993,12 @@ function animate() {
         document.getElementById("scoreBoard").style.visibility = "hidden"; 
         
     }
+    if(attackTimer.getElapsedTime() > 0.02)
+    {
+        gun.remove(muzzleFlash);
+        scene.remove(line);
+    }
+    
 }
 
 

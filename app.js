@@ -10,20 +10,11 @@ app.use('/build/', express.static(path.join(__dirname, 'node_modules/three/build
 app.use('/modules/', express.static(path.join(__dirname, 'node_modules')));
 app.use('/jsm/', express.static(path.join(__dirname, 'node_modules/three/examples/jsm')));
 
-// //Whenever someone connects this gets executed
-// io.on('connection', function(socket) {
-//   console.log('A user connected');
-
-//   //Whenever someone disconnects this piece of code executed
-//   socket.on('disconnect', function () {
-//      console.log('A user disconnected');
-//   });
-// });
-
-
+const server = http.createServer(app);
 
 const WebSocket = require('ws')
-const server = new WebSocket.Server({ port: '9000' })
+const wss = new WebSocket.Server({ server })
+
 
 //Game logic
 const leaderBoard = {};
@@ -51,12 +42,12 @@ function handleMessage(message)
 
 function broadcast(message)
 {
-  server.clients.forEach(function(client) {
+  wss.clients.forEach(function(client) {
     client.send(message);
   });
 }
 
-server.on('connection', socket => { 
+wss.on('connection', socket => { 
   socket.on('message', message => {
     
     console.log(JSON.parse(message))
@@ -66,7 +57,6 @@ server.on('connection', socket => {
   
 });
 
-
-app.listen(process.env.PORT || 8080, () =>
-  console.log('Visit http://127.0.0.1:8080')
+server.listen(process.env.PORT || 8080, () =>
+  console.log('Visit http://127.0.0.1:'+(process.env.PORT || 8080))
 );
