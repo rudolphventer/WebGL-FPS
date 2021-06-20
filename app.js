@@ -50,7 +50,7 @@ function broadcast(message)
 wss.on('connection', socket => { 
   socket.on('message', message => {
     
-    console.log(JSON.parse(message))
+    //console.log(JSON.parse(message))
     //socket.send(`Roger that! ${message}`);
     handleMessage(message);
   });
