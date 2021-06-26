@@ -139,11 +139,12 @@ gltfloader.load( 'gun/gun.gltf', function ( gltf ) {
 
 // Sets up websocket to conenct to server and notify of player connection
 
-const socket = new WebSocket("wss://" + window.location.host );
+const socket = new WebSocket("ws://" + window.location.host );
  socket.onopen = function(event) {
      console.log("WebSocket is open now.");
      socket.send(JSON.stringify({action: "connect", playerName: playerName}))
      spawned = true;
+     
   };
 
 socket.onmessage = function(event)
@@ -186,6 +187,9 @@ function handleMessage(message)
         break;
         case "leaderBoardUpdate":
             updateLeaderBoard(message);
+        break;
+        case "isalive":
+            isAlive(message);
         break;
 
       }
@@ -277,7 +281,7 @@ function killPlayer(message)
     playerList.map( entity =>
         {
             console.log(entity)
-            if(entity.playerName == message.victimName)
+            if(entity.playerName == message.playerName)
             {
                 console.log("killplayer "+ entity.playerName)
                 entity.kill();
@@ -307,10 +311,24 @@ function updateLeaderBoard(message)
     });
 }
 
-function playerDisconnencts(name)
-{
+function isAlive()
+{  
+    socket.send(JSON.stringify({action: "isalive", name: playerName}));
 }
 
+function playerDisconnects(message)
+{
+    console.log(message)
+    playerList.map( entity =>
+        {
+            console.log(entity)
+            if(entity.playerName == message.victimName)
+            {
+                console.log(entity.playerName + "has disconnected");
+                entity.kill();
+            }
+        })
+}
 // Set up overlays
 //death overlay
 

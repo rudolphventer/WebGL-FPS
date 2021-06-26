@@ -33,7 +33,11 @@ function handleMessage(message)
           broadcast(JSON.stringify(leaderBoardPacket));
           break;
         case "connect":
-          leaderBoard[messageJSON.playerName] = {name: messageJSON.playerName, points: 0, deaths: 0};
+          leaderBoard[messageJSON.playerName] = {name: messageJSON.playerName, points: 0, deaths: 0, heartbeats: 3};
+          clients.push()
+          break;
+        case "isalive":
+          leaderBoard[messageJSON.name].heartbeats = 1;
           clients.push()
           break;
         default:
@@ -47,11 +51,31 @@ function broadcast(message)
     client.send(message);
   });
 }
+function playerDisconnected() { 
+  Object.keys(leaderBoard).map( (e, index)=> {
+    if(leaderBoard[e].heartbeats < 1)
+    {
+      console.log(leaderBoard[e].name + " has disconnected")
+      broadcast(JSON.stringify({action: "playerDisconnects", playerName: leaderBoard[e].name}))
+      delete leaderBoard[e]
+    }
+    else
+    leaderBoard[e].heartbeats -= 1
+  })
+  console.log(leaderBoard)
+}
 
 wss.on('connection', socket => { 
   socket.on('message', message => {
     handleMessage(message);
   });
+  // socket.on('disconnect', e=>
+  // {
+  //   console.log("disconenct")
+  //   broadcast(JSON.stringify({action: "isalive"}))
+  //   setTimeout(playerDisconnected, 2000)
+  // })
+  
   
 });
 
