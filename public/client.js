@@ -419,7 +419,7 @@ const ambientLight = new THREE.AmbientLight(0xffffff,1);
 
  const lightHelper = new THREE.PointLightHelper(pointLight)
  const gridHelper = new THREE.GridHelper(200, 50);
- scene.add(lightHelper, gridHelper)
+ //scene.add(lightHelper, gridHelper)
 
 //Camera Controls
 const controls = new PointerLockControls(camera, renderer.domElement);
@@ -952,10 +952,10 @@ function animate() {
             document.getElementById("ammoCounter").innerHTML = gunAmmo;
         }
         if (rightClick) {
-            ironSights(true)
+            //ironSights(true)
         } else
         {
-            ironSights(false)
+            //ironSights(false)
         }
     }
     
