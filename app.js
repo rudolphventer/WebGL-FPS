@@ -2,6 +2,8 @@ const express = require('express')
 const app = express()
 const path = require('path')
 const http = require('http');
+const { Server } = require("socket.io");
+
 //var server = http.createServer(app);
 //const io = require('socket.io')(server);
 
@@ -12,13 +14,23 @@ app.use('/jsm/', express.static(path.join(__dirname, 'node_modules/three/example
 
 const server = http.createServer(app);
 
-const WebSocket = require('ws')
-const wss = new WebSocket.Server({ server })
+const io = new Server(server);
+
+//const WebSocket = require('ws')
+//const wss = new WebSocket.Server({ server })
 
 
 //Game logic
 const leaderBoard = {};
 var clients = [];
+var leaderBoardPacket;
+
+function sendLeaderboardUpdate()
+{
+  leaderBoardPacket = {leaderBoard}
+  leaderBoardPacket.action = "leaderBoardUpdate";
+  broadcast(JSON.stringify(leaderBoardPacket));
+}
 
 function handleMessage(message)
 {
@@ -28,12 +40,11 @@ function handleMessage(message)
         case "killPlayer":
           leaderBoard[messageJSON.attackerName].points += 1;
           leaderBoard[messageJSON.victimName].deaths += 1;
-          var leaderBoardPacket = {leaderBoard}
-          leaderBoardPacket.action = "leaderBoardUpdate";
-          broadcast(JSON.stringify(leaderBoardPacket));
+          sendLeaderboardUpdate();
           break;
         case "connect":
-          leaderBoard[messageJSON.playerName] = {name: messageJSON.playerName, points: 0, deaths: 0, heartbeats: 3};
+          leaderBoard[messageJSON.playerName] = {name: messageJSON.playerName, points: 0, deaths: 0, heartbeats: 1};
+          sendLeaderboardUpdate();
           clients.push()
           break;
         case "isalive":
@@ -47,35 +58,37 @@ function handleMessage(message)
 
 function broadcast(message)
 {
-  wss.clients.forEach(function(client) {
-    client.send(message);
-  });
+  io.emit("message",message)
 }
 function playerDisconnected() { 
+  console.log(leaderBoard)
   Object.keys(leaderBoard).map( (e, index)=> {
-    if(leaderBoard[e].heartbeats < 1)
+    console.log(leaderBoard[e].name + leaderBoard[e].heartbeats)
+    if(leaderBoard[e].heartbeats == 0)
     {
       console.log(leaderBoard[e].name + " has disconnected")
       broadcast(JSON.stringify({action: "playerDisconnects", playerName: leaderBoard[e].name}))
       delete leaderBoard[e]
+      sendLeaderboardUpdate();
     }
-    else
-    leaderBoard[e].heartbeats -= 1
   })
   console.log(leaderBoard)
 }
 
-wss.on('connection', socket => { 
-  socket.on('message', message => {
+io.on('connection', socket => { 
+  socket.onAny((eventName, message) => {
     handleMessage(message);
   });
-  // socket.on('disconnect', e=>
-  // {
-  //   console.log("disconenct")
-  //   broadcast(JSON.stringify({action: "isalive"}))
-  //   setTimeout(playerDisconnected, 2000)
-  // })
-  
+  socket.on('disconnect', function(){
+    // Send isalive
+    broadcast(JSON.stringify({action: "isalive"}))
+    // Zero everyone's heartbeats
+    Object.keys(leaderBoard).map( (e, index)=> {
+      leaderBoard[e].heartbeats = 0
+    })
+    // Wait a time for responses and thencheck who is alive
+    setTimeout(playerDisconnected, 1000)
+});
   
 });
 

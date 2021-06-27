@@ -48,6 +48,10 @@ body {
     visibility: hidden;
 }
 
+.leaderboardItem {
+    text-align: end;
+}
+
 .menuOverlay{
     position: absolute;
     top: 0px;

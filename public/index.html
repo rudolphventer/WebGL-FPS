@@ -14,13 +14,18 @@
     <div class="overlay">
       <div id="crosshair" class="crosshair">+</div>
       <div id="ammoCounter"></div>
+      <div class="leaderboardItem">
+        Player - K/D
+      </div>
+      <div id="leaderBoard" class="leaderboardItem">
+      </div>
     </div>
     <div id="damageOverlay" class="damageOverlay">
     </div>
     <div id="scoreBoard" class="scoreOverlay">
       <div class="menuBox">
         LeaderBoard
-        <ol id="leaderBoard"></ol>
+        <ol id="leaderBoardOld"></ol>
       </div>
     </div>
     <div id="deathScreen" class="deathOverlay">
@@ -37,7 +42,7 @@
       </div>
     </div>
     <div id="app"></div>
-    <script src="/modules/socket.io/client-dist/socket.io.min.js"></script>
+    <script src="/modules/socket.io/client-dist/socket.io.js"></script>
     <script type="module" src="client.js"></script>
     <canvas id="bg"></canvas>
   </body>
