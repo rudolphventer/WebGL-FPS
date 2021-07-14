@@ -3,6 +3,7 @@ import { Clock, Mesh, MeshToonMaterial, TetrahedronBufferGeometry } from '/build
 import { OrbitControls } from '/jsm/controls/OrbitControls.js'
 import { PointerLockControls } from '/jsm/controls/PointerLockControls.js'
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader.js';
+import playerClass from './playerClass.js';
 //import { socket } from '/modules/socket.io/client-dist/socket.io.js';
 //import * as io from '/modules/socket.io/client-dist/socket.io.js';
 
@@ -42,32 +43,6 @@ let blockedBackward = false;
 let blockedLeft = false;
 let blockedRight = false;
 let blockedTop = false;
-
-// The player class that is created for each player
-
-class playerObject
-{
-    constructor (name)
-    {
-        this.playerName = name;
-        this.geometry = new THREE.BoxGeometry(1, 3, 1, 100);
-        this.material = new THREE.MeshStandardMaterial({color: 0x898989 });
-        this.player = new THREE.Mesh(this.geometry, this.material);
-        this.player.geometry.applyMatrix( new THREE.Matrix4().makeTranslation(0, -1, 0) );
-        this.player.name = name;
-    }
-
-    spawn(x, y, z)
-    {
-        scene.add(this.player);
-        this.player.position.set(0,10,0)
-    }
-    kill()
-    {
-        scene.remove(this.player);
-    }
-    
-}
 
 function getPlayerIndexByName(name)
 {
@@ -213,7 +188,7 @@ function playerConnects(message)
 {
     //Adds the new player to the playerList array and responds by sending a ping informing the new player of their location
     //The other player responds by adding each other player to their playerList based on the pings it recieves
-    let newPlayer = new playerObject(message.playerName);
+    let newPlayer = new playerClass(message.playerName, scene);
     playerList.push(newPlayer);
     newPlayer.spawn();
     console.log(playerList[playerList.length-1].playerName +" has joined!")
@@ -224,7 +199,7 @@ function playerUpdates(message)
 {
     //When our player loads in we reqeust pings from other players already in the game with "playerConnects"
     //Here we receive them and add each player to the playerList as well as moving them to their current position
-    let newPlayer = new playerObject(message.playerName);
+    let newPlayer = new playerClass(message.playerName, scene);
     newPlayer.spawn();
     playerList.push(newPlayer);
     movePlayer({action: "move", playerName: message.playerName, position: message.position, rotation: message.rotation})
@@ -399,6 +374,14 @@ const material = new THREE.MeshStandardMaterial({color: 0xcc33ff });
 const torus = new THREE.Mesh(geometry, material);
 torus.name = "torus"
 torus.rotateX(0.5)
+
+const geometry2 = new THREE.PlaneGeometry( 65, 65);
+const material2 = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+const plane2 = new THREE.Mesh( geometry2, material2 );
+scene.add( plane2);
+plane2.rotateX( - Math.PI / 2);
+plane2.position.set(0,-1,0)
+
 
 
 //Creating player object

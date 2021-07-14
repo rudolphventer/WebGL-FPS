@@ -11,6 +11,14 @@
     
 </style>
   <body>
+
+    <div class="mainMenu">
+      <div class="menuBox">
+        <input type="text" id="fname" name="fname">
+        <button class="centered" id="respawn">Join</button>
+      </div>
+    </div>
+
     <div class="overlay">
       <div id="crosshair" class="crosshair">+</div>
       <div id="ammoCounter"></div>
@@ -20,14 +28,17 @@
       <div id="leaderBoard" class="leaderboardItem">
       </div>
     </div>
+
     <div id="damageOverlay" class="damageOverlay">
     </div>
+
     <div id="scoreBoard" class="scoreOverlay">
       <div class="menuBox">
         LeaderBoard
         <ol id="leaderBoardOld"></ol>
       </div>
     </div>
+
     <div id="deathScreen" class="deathOverlay">
       <div class="menuBox">
         <h1 class="centered">You Died</h1>
@@ -35,12 +46,14 @@
         <button class="centered" id="respawn">Respawn</button>
       </div>
     </div>
+
     <div id="mainMenu" class="menuOverlay">
       <div class="menuBox">
         <button class="menuButton" id="respawn">Respawn</button>
         <button class="menuButton" id="exit">Exit</button>
       </div>
     </div>
+
     <div id="app"></div>
     <script src="/modules/socket.io/client-dist/socket.io.js"></script>
     <script type="module" src="client.js"></script>
