@@ -83,11 +83,11 @@ const gltfloader = new GLTFLoader();
 let map;
 var gun;
 
-gltfloader.load( 'Map/map.gltf', function ( gltf ) {
+gltfloader.load( 'Map2/newmap.gltf', function ( gltf ) {
     map = gltf.scene;
     map.name = "teeeeeeee"
-    map.position.set(0,0.1,0)
-    map.scale.set(2.2,2.2,2.2)
+    map.position.set(0,-10,0)
+    map.scale.set(0.4,0.4,0.4)
     objects.push(map)
     scene.add( map );
     //objects.push(map)
@@ -320,6 +320,8 @@ const renderer = new THREE.WebGLRenderer({
   
 });
 
+scene.traverse(i => {if (i.isMesh) i.material.shininess = 0})
+
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 
@@ -378,7 +380,7 @@ torus.rotateX(0.5)
 const geometry2 = new THREE.PlaneGeometry( 65, 65);
 const material2 = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
 const plane2 = new THREE.Mesh( geometry2, material2 );
-scene.add( plane2);
+//scene.add( plane2);
 plane2.rotateX( - Math.PI / 2);
 plane2.position.set(0,-1,0)
 
@@ -564,7 +566,7 @@ controls.getObject().position.y = 3;
 scene.add(ambientLight);
 scene.add(pointLight);
 scene.add(camera);
-scene.add(torus);
+//scene.add(torus);
 scene.add(playerObj);
 
 //Adding Objects to the collisoin array
@@ -669,18 +671,29 @@ function ironSights(b)
 const down = new THREE.Vector3(0, -1, 0);
 const raycaster2 = new THREE.Raycaster();
 
+const down2 = new THREE.Vector3(0.1, 1, 0);
+const raycaster22 = new THREE.Raycaster();
+
 function detectFloorCollisions(object1, object2)
 {
     raycaster2.set(playerObj.position, down);
     const collisionResults = raycaster2.intersectObject(object2, true);
+    raycaster22.set(playerObj.position, down2);
+    const collisionResults2 = raycaster2.intersectObject(object2, true);
     inFloor = false;
-    if(collisionResults.length > 0)
+    if(collisionResults.length > 0 || collisionResults2.length > 0)
     {   
-        if(collisionResults[0].distance > 3)
+        if(collisionResults[0].distance > 3 || collisionResults2[0].distance > 3)
         {
             return false;
         }
-        else if(collisionResults[0].distance < 2.5)
+        else if(collisionResults[0].distance < 2 || collisionResults2[0].distance < 2)
+        {
+            controls.getObject().position.y += 1;
+            inFloor = true;
+            return true;
+        }
+        else if((collisionResults[0].distance < 2.5 )|| collisionResults2[0].distance < 2.5)
         {
             controls.getObject().position.y += 0.1;
             inFloor = true;
@@ -705,6 +718,11 @@ function detectFrontCollisions(object1, object2)
         if(collisionResults[0].distance > 1.1)
         {
             return false;
+        }
+        else if(collisionResults[0].distance < 0.3)
+        {
+            controls.moveForward(-1)
+            return true;
         }
         else if(collisionResults[0].distance < 0.9)
         {
@@ -731,6 +749,11 @@ function detectLeftCollisions(object1, object2)
         {
             return false;
         }
+        else if(collisionResults[0].distance < 0.5)
+        {
+            controls.moveRight(-1)
+            return true;
+        }
         else if(collisionResults[0].distance < 0.9)
         {
             controls.moveRight(-0.2)
@@ -756,6 +779,11 @@ function detectRightCollisions(object1, object2)
         {
             return false;
         }
+        else if(collisionResults[0].distance < 0.5)
+        {
+            controls.moveRight(1)
+            return true;
+        }
         else if(collisionResults[0].distance < 0.9)
         {
             controls.moveRight(0.2)
@@ -780,6 +808,11 @@ function detectBackCollisions(object1, object2)
         if(collisionResults[0].distance > 1)
         {
             return false;
+        }
+        else if(collisionResults[0].distance < 0.5)
+        {
+            controls.moveForward(1)
+            return true;
         }
         else if(collisionResults[0].distance < 0.9)
         {
