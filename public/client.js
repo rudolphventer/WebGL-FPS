@@ -83,11 +83,11 @@ const gltfloader = new GLTFLoader();
 let map;
 var gun;
 
-gltfloader.load( 'Map2/newmap.gltf', function ( gltf ) {
+gltfloader.load( 'Map2/forest.gltf', function ( gltf ) {
     map = gltf.scene;
     map.name = "teeeeeeee"
     map.position.set(0,-10,0)
-    map.scale.set(0.4,0.4,0.4)
+    map.scale.set(0.8,0.8,0.8)
     objects.push(map)
     scene.add( map );
     //objects.push(map)
@@ -368,6 +368,13 @@ let skyboxGeo = new THREE.BoxGeometry( 900, 900, 900);
 let skyboxMat = new THREE.MeshStandardMaterial({color: 0x00FFFF });
 let skybox = new THREE.Mesh( skyboxGeo, materialArray );
 scene.add( skybox );
+
+let WaterGeo = new THREE.PlaneGeometry(200, 200);
+let WaterMat = new THREE.MeshStandardMaterial({color: 0x005373, side: THREE.DoubleSide, transparent: true, opacity: 0.5});
+let Water = new THREE.Mesh( WaterGeo, WaterMat );
+Water.rotateX( - Math.PI / 2);
+Water.position.set(0,-13,0)
+scene.add( Water );
 
 //Obj1
 
@@ -934,7 +941,7 @@ function animate() {
 
     if(jump)
     {
-        controls.getObject().position.y += 0.3 + (0.4-jumpTimer.getElapsedTime());
+        controls.getObject().position.y += 0.1 + (0.4-jumpTimer.getElapsedTime());
     } 
     if(jumpTimer.getElapsedTime() >=0.4)
     {
