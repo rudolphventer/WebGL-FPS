@@ -4,6 +4,7 @@ import { OrbitControls } from '/jsm/controls/OrbitControls.js'
 import { PointerLockControls } from '/jsm/controls/PointerLockControls.js'
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader.js';
 import playerClass from './playerClass.js';
+import weaponClass from './weaponClass.js';
 //import { socket } from '/modules/socket.io/client-dist/socket.io.js';
 //import * as io from '/modules/socket.io/client-dist/socket.io.js';
 
@@ -31,11 +32,12 @@ let spawned = false;
 var leaderBoard = [];
 let showLeaderBoard = false;
 
-let gunAccuracy = 0.02;
-let gunMagazineSize = 30;
-let gunAmmo = 30;
-let gunDamage = 25;
-let gunFireRate = 0.1;
+// let gunAccuracy = 0.02;
+// let adsAccuracy = 0.005;
+// let gunMagazineSize = 30;
+// let gunAmmo = 30;
+// let gunDamage = 25;
+// let gunFireRate = 0.1;
 let reload = false;
 
 let blockedForward = false;
@@ -66,7 +68,7 @@ function spawn()
     socket.send(JSON.stringify({action: "spawnPlayer", playerName: playerName, position: playerObj.position, rotation: playerObj.rotation}))
     dead = false;
     spawned = true;
-    gunAmmo = gunMagazineSize;
+    playerWeapon.gunAmmo = playerWeapon.gunMagazineSize;
     playerHealth = 100;
     
 }
@@ -81,8 +83,9 @@ let playerName = prompt("Please enter your name", "")
 const gltfloader = new GLTFLoader();
 
 let map;
-var gun;
 
+var loadingMap = true;
+//gltfloader.onLoad
 gltfloader.load( 'Map2/forest.gltf', function ( gltf ) {
     map = gltf.scene;
     map.name = "teeeeeeee"
@@ -90,6 +93,7 @@ gltfloader.load( 'Map2/forest.gltf', function ( gltf ) {
     map.scale.set(0.8,0.8,0.8)
     objects.push(map)
     scene.add( map );
+    loadingMap = false;
     //objects.push(map)
 
 }, undefined, function ( error ) {
@@ -98,21 +102,9 @@ gltfloader.load( 'Map2/forest.gltf', function ( gltf ) {
 
 } );
 
-gltfloader.load( 'gun/gun.gltf', function ( gltf ) {
-    gun = gltf.scene;
-    gun.name = "teeeeeeee"
-    gun.position.set(0.3,-0.3,-1)
-    gun.scale.set(0.2,0.2,0.2)
-    //gun.position.set(3,-1,1).applyQuaternion( camera.quaternion )
-    //gun.rotation.set(0,1.5708,0)
-    camera.add( gun );
-    //objects.push(map)
 
-}, undefined, function ( error ) {
 
-	console.error( error );
 
-} );
 
 
 
@@ -315,6 +307,7 @@ function playerDisconnects(message)
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth/window.innerHeight,0.001, 1000);
+const playerWeapon = new weaponClass(gltfloader, camera);
 const renderer = new THREE.WebGLRenderer({
   canvas: document.querySelector('#bg'),
   
@@ -461,6 +454,7 @@ const onKeyDown = function ( event ) {
 
         case 'Space':
             jumpAction();
+            //playerWeapon.changeGun(1)
             break;
         case 'ShiftLeft':
             sprint = true;
@@ -580,7 +574,7 @@ scene.add(playerObj);
 objects.push(torus);
 
 //SHooting in general////////////////////////////////////////////////////////////////////////
-document.getElementById("ammoCounter").innerHTML = gunAmmo;
+document.getElementById("ammoCounter").innerHTML = playerWeapon.gunAmmo;
 const flashPNG = new THREE.TextureLoader().load( 'gun/flash.png' );
 const flashMaterial = new THREE.SpriteMaterial( { map: flashPNG } );
 
@@ -590,7 +584,7 @@ const holeMaterial = new THREE.SpriteMaterial( { map: holePNG} );
 const muzzleFlash = new THREE.Sprite( flashMaterial );
 const lineMaterial = new THREE.LineBasicMaterial( { color: 0xffffff } );
 const lineGeometry = new THREE.BufferGeometry()
-//const LineGeometry = new THREE.BufferGeometry().setFromPoints([intersects[0].point, gun.getWorldPosition() ]);
+//const LineGeometry = new THREE.BufferGeometry().setFromPoints([intersects[0].point, playerWeapon.weaponModel.getWorldPosition() ]);
 const line = new THREE.Line( lineGeometry, lineMaterial );
 
 function hitMarker(x)
@@ -611,24 +605,34 @@ function shoot()
 
     if(!attackTimer.running)
     {	
-        if(gunAmmo > 0)
+        if(playerWeapon.gunAmmo > 0)
         {
-            gun.position.z = -0.5;
-            gunAmmo--;
-            document.getElementById("ammoCounter").innerHTML = gunAmmo;
+            console.log(playerWeapon.weaponModel.position.z)
+            playerWeapon.weaponModel.position.z = -0.5;
+            playerWeapon.gunAmmo--;
+            document.getElementById("ammoCounter").innerHTML = playerWeapon.gunAmmo;
             var testt = new THREE.Vector2();
-            testt.y = (Math.random()*1>0.5?Math.random()*gunAccuracy*-1:Math.random()*gunAccuracy*1);
-            testt.x = (Math.random()*1>0.5?Math.random()*gunAccuracy*-1:Math.random()*gunAccuracy*1);
-            gun.add(muzzleFlash);
+            if(!adsOn)
+            {
+                testt.y = (Math.random()*1>0.5?Math.random()*playerWeapon.gunAccuracy*-1:Math.random()*playerWeapon.gunAccuracy*1);
+                testt.x = (Math.random()*1>0.5?Math.random()*playerWeapon.gunAccuracy*-1:Math.random()*playerWeapon.gunAccuracy*1);
+            } else
+            {
+                testt.y = (Math.random()*1>0.5?Math.random()*playerWeapon.adsAccuracy*-1:Math.random()*playerWeapon.adsAccuracy*1);
+                testt.x = (Math.random()*1>0.5?Math.random()*playerWeapon.adsAccuracy*-1:Math.random()*playerWeapon.adsAccuracy*1); 
+            }
+            
+
+            playerWeapon.weaponModel.add(muzzleFlash);
             muzzleFlash.position.z = -5;
             muzzleFlash.scale.set(3,3,3);
-            //gun.position.z += -0.5
+            //playerWeapon.weaponModel.position.z += -0.5
             sound.play();
             raycaster.setFromCamera( testt, camera );	
             var intersects = raycaster.intersectObjects( scene.children, true );
             // how to get point where bulelt hits //console.log(intersects[0].point)
             var gunPosition = new THREE.Vector3();
-            gun.getWorldPosition(gunPosition)
+            playerWeapon.weaponModel.getWorldPosition(gunPosition)
             let bulletArc = new THREE.BufferGeometry().setFromPoints([intersects[0].point, gunPosition ]);
             line.geometry = bulletArc;
             scene.add(line);
@@ -637,7 +641,7 @@ function shoot()
             {
                 if(playerList.some(player => player.playerName === intersects[0].object.name)){
                     hitMarker(true);
-                    damagePlayer(intersects[0].object.name, "defaultWeapon", gunDamage)
+                    damagePlayer(intersects[0].object.name, "defaultWeapon", playerWeapon.gunDamage)
                     console.log(playerName + " hit " +intersects[0].object.name)
                     
 
@@ -655,23 +659,26 @@ function shoot()
     
 }
 var adsTimer = new THREE.Clock(false);
-var defaultX= 0.3
-var defaultY= -0.3
-var adsX = 0;
-var adsY = -0.11;
+// var defaultX= 0.2;
+// var defaultY= -0.2;
+// var defaultZ= 0;
+// var adsX = 0;
+// var adsY = -0.1;
 var adsOn = false;
-var adsTime = 1;
 function ironSights(b)
 {
     if(b)
     {
+        adsOn = true;
+        camera.fov = 45;
         adsTimer.start();
-        gun.position.x = adsX;
-        gun.position.y = adsY;
+        playerWeapon.weaponModel.position.x = playerWeapon.adsX;
+        playerWeapon.weaponModel.position.y = playerWeapon.adsY;
     } else
     {
-        gun.position.x = defaultX;
-        gun.position.y = defaultY;
+        adsOn = false;
+        playerWeapon.weaponModel.position.x = playerWeapon.defaultX;
+        playerWeapon.weaponModel.position.y = playerWeapon.defaultY;
     }
 }
 
@@ -950,13 +957,13 @@ function animate() {
     }
 
     //Movement
-    if(!dead && spawned)
+    if(!dead && !loadingMap && spawned)
     {
         if (moveForward && !sprint && !blockedForward) {
             controls.moveForward(0.2)
         }
         if (moveForward && sprint) {
-            controls.moveForward(0.4)
+            controls.moveForward(0.3)
         }
         if (moveBackward && !blockedBackward) {
             controls.moveForward(-0.2);
@@ -971,14 +978,14 @@ function animate() {
             shoot();
         }
         if (reload) {
-            gunAmmo = gunMagazineSize;
-            document.getElementById("ammoCounter").innerHTML = gunAmmo;
+            playerWeapon.gunAmmo = playerWeapon.gunMagazineSize;
+            document.getElementById("ammoCounter").innerHTML = playerWeapon.gunAmmo;
         }
         if (rightClick) {
-            //ironSights(true)
+            ironSights(true)
         } else
         {
-            //ironSights(false)
+            ironSights(false)
         }
     }
     
@@ -1013,6 +1020,16 @@ function animate() {
         document.getElementById("deathScreen").style.visibility = "hidden";
     }
 
+    //Checking if player is dead and spawned
+    if(loadingMap)
+    {
+        document.getElementById("loadingScreen").style.visibility = "visible";
+        controls.unlock();
+    }else
+    {
+        document.getElementById("loadingScreen").style.visibility = "hidden";
+    }
+
     //Damage Overlay
     if(playerHealth<100 && !dead)
     {
@@ -1038,21 +1055,21 @@ function animate() {
     }
     if(attackTimer.getElapsedTime() > 0.01)
     {
-        gun.remove(muzzleFlash);
+        playerWeapon.weaponModel.remove(muzzleFlash);
         scene.remove(line);
         hitMarker(false)
     }
-    if(attackTimer.getElapsedTime() > gunFireRate)
+    if(attackTimer.getElapsedTime() > playerWeapon.gunFireRate)
     {
         attackTimer.stop();
         //if(leftClick)
         sound.stop();
         
-        //gun.remove(muzzleFlash);
+        //playerWeapon.weaponModel.remove(muzzleFlash);
         //scene.remove(line);
-    } else if(attackTimer.getElapsedTime() < gunFireRate)
+    } else if(attackTimer.getElapsedTime() < playerWeapon.gunFireRate && playerWeapon.weaponModel)
     {
-        gun.position.z = -0.5-(0.5* (attackTimer.getElapsedTime()/gunFireRate))
+        playerWeapon.weaponModel.position.z = playerWeapon.defaultZ-(0.5* (attackTimer.getElapsedTime()/playerWeapon.gunFireRate))
     }
     
 }
