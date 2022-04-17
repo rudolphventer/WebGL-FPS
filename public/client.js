@@ -1,8 +1,7 @@
-import * as THREE from '/build/three.module.js';
-import { Clock, Mesh, MeshToonMaterial, TetrahedronBufferGeometry } from '/build/three.module.js'
-import { OrbitControls } from '/jsm/controls/OrbitControls.js'
-import { PointerLockControls } from '/jsm/controls/PointerLockControls.js'
-import { GLTFLoader } from '/jsm/loaders/GLTFLoader.js';
+//import * as THREE from '/build/three.module.js';
+import * as THREE from 'three';
+import { PointerLockControls } from 'PointerLockControls';
+import { GLTFLoader } from 'GLTFLoader';
 import playerClass from './playerClass.js';
 import weaponClass from './weaponClass.js';
 //import { socket } from '/modules/socket.io/client-dist/socket.io.js';
@@ -92,6 +91,7 @@ gltfloader.load( 'Map2/forest.gltf', function ( gltf ) {
     map.position.set(0,-10,0)
     map.scale.set(0.8,0.8,0.8)
     objects.push(map)
+    map.updateMatrixWorld();
     scene.add( map );
     loadingMap = false;
     //objects.push(map)
@@ -599,6 +599,8 @@ function hitMarker(x)
 
 //var mouse = new THREE.Vector2();
 var raycaster = new THREE.Raycaster( new THREE.Vector3(), new THREE.Vector3( 0, - 5, 0 ), 0, 0 );
+scene.traverse(i => {i.layers.set(0)})
+raycaster.layers.set(0);
 var attackTimer = new THREE.Clock(false);
 function shoot()
 {
@@ -607,7 +609,6 @@ function shoot()
     {	
         if(playerWeapon.gunAmmo > 0)
         {
-            console.log(playerWeapon.weaponModel.position.z)
             playerWeapon.weaponModel.position.z = -0.5;
             playerWeapon.gunAmmo--;
             document.getElementById("ammoCounter").innerHTML = playerWeapon.gunAmmo;
@@ -628,11 +629,24 @@ function shoot()
             muzzleFlash.scale.set(3,3,3);
             //playerWeapon.weaponModel.position.z += -0.5
             sound.play();
+            // scene.updateMatrixWorld()
+            console.log(scene.children);
+            var myArray = [];
+            scene.traverse( function( object ) {
+
+                if ( object.isMesh ) myArray.push(object);
+            
+            } );
+            console.log(myArray);
+            
             raycaster.setFromCamera( testt, camera );	
-            var intersects = raycaster.intersectObjects( scene.children, true );
+            var intersects = raycaster.intersectObjects( myArray, true );
+            console.log(intersects);
             // how to get point where bulelt hits //console.log(intersects[0].point)
             var gunPosition = new THREE.Vector3();
-            playerWeapon.weaponModel.getWorldPosition(gunPosition)
+            playerWeapon.weaponModel.getWorldPosition(gunPosition);
+            //Visualise raycasts
+            //scene.add(new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 300, 0xff0000) );
             let bulletArc = new THREE.BufferGeometry().setFromPoints([intersects[0].point, gunPosition ]);
             line.geometry = bulletArc;
             scene.add(line);
@@ -960,19 +974,19 @@ function animate() {
     if(!dead && !loadingMap && spawned)
     {
         if (moveForward && !sprint && !blockedForward) {
-            controls.moveForward(0.2)
+            controls.moveForward(0.1)
         }
-        if (moveForward && sprint) {
-            controls.moveForward(0.3)
+        if (moveForward && sprint && !blockedForward) {
+            controls.moveForward(0.14)
         }
         if (moveBackward && !blockedBackward) {
-            controls.moveForward(-0.2);
+            controls.moveForward(-0.1);
         }
         if (moveLeft && !blockedRight) {
-            controls.moveRight(-0.2);
+            controls.moveRight(-0.1);
         }
         if (moveRight && !blockedLeft) {
-            controls.moveRight(0.2);
+            controls.moveRight(0.1);
         }
         if (leftClick) {
             shoot();

@@ -1,5 +1,3 @@
-import * as THREE from '/build/three.module.js';
-import { GLTFLoader } from '/jsm/loaders/GLTFLoader.js';
 // The player class that is created for each player
 function loadModelF(gltfloader, camera, url, defaultX, defaultY, defaultZ, defaultXScale, defaultYScale, defaultZScale){
 

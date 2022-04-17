@@ -1,4 +1,4 @@
-import * as THREE from '/build/three.module.js';
+import * as THREE from 'three';
 // The player class that is created for each player
 
 export default class playerClass
